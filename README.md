@@ -18,10 +18,10 @@ pip install -r requirements.txt
 <img src=".asset/input_apple.png" alt="drawing" width="300"/>
 
 **Stable Diffusion image:**       **Segmented image:**
-
-<img src=".asset/stabled_apple.png" alt="drawing" width="300"/>
-<img src=".asset/segmented_apple.png" alt="drawing" width="300"/>
-
+<div style="display: flex;">
+  <img src=".asset/stabled_apple.png" alt="drawing" width="300"/>
+  <img src=".asset/segmented_apple.png" alt="drawing" width="300"/>
+</div>
 ## 🔥 Quickstart
 
 
