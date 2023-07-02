@@ -22,6 +22,7 @@ pip install -r requirements.txt
   <img src=".asset/stabled_apple.png" alt="drawing" width="300"/>
   <img src=".asset/segmented_apple.png" alt="drawing" width="300"/>
 </div>
+
 ## 🔥 Quickstart
 
 
