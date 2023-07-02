@@ -1,0 +1,6 @@
+supervision
+segment_anything
+pillow
+ultralytics
+opencv-python
+diffusers
