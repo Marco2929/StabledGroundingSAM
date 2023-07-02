@@ -29,7 +29,7 @@ pip install -r requirements.txt
 Clone the StabledGroundingSAM repository from GitHub.
 
 ```bash
-git clone https://github.com/IDEA-Research/GroundingDINO.git
+git clone https://github.com/Marco2929/StabledGroundingSAM.git
 ```
 
 Change the current directory to the StabledGroundingSAM folder.
