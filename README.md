@@ -1,51 +1,54 @@
 ## StabledGroundingSAM
 
-This package takes an image and a text file containing the names of objects of interest and generates new images using stable diffusion. In the next step, grounding Dino detects the objects in the images and draws a bounding box around them. This is then the input to segment anything, which generates a segmentation mask. The generated dataset is saved in the yolo format.
-## 💻 Install
+StabledGroundingSAM is a package that leverages stable diffusion, Grounding Dino, and Segment Anything to generate new images with object segmentation. It takes an input image and a text file containing the names of objects of interest. The package then applies stable diffusion to the input image, followed by object detection using Grounding Dino to draw bounding boxes around the detected objects. Finally, Segment Anything generates segmentation masks for the objects in the images. The generated dataset is saved in the YOLO format.
 
-Pip install the requirements in a
-[**3.11>=Python>=3.7**](https://www.python.org/) environment.
+### 💻 Installation
+
+To install StabledGroundingSAM, make sure you have Python 3.7 or later installed. Then, use pip to install the required dependencies by running the following command:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-## 🌀 Results
-**Input prompt:** apple
+### 🌀 Results
 
-**Input image:** 
+Here are the results obtained using StabledGroundingSAM with the input prompt "apple":
 
-<img src=".asset/input_apple.png" alt="drawing" width="300"/>
+**Input image:**
 
-**Stable Diffusion image:**       **Segmented image:**
-<div style="display: flex;">
-  <img src=".asset/stabled_apple.png" alt="drawing" width="300"/>
-  <img src=".asset/segmented_apple.png" alt="drawing" width="300"/>
-</div>
+<img src=".asset/input_apple.png" alt="input_apple" width="300"/>
 
-## 🔥 Quickstart
+**Stable Diffusion image:**
 
+<img src=".asset/stabled_apple.png" alt="stabled_apple" width="300"/>
 
-Clone the StabledGroundingSAM repository from GitHub.
+**Segmented image:**
+
+<img src=".asset/segmented_apple.png" alt="segmented_apple" width="300"/>
+
+### 🔥 Quickstart
+
+To get started with StabledGroundingSAM, follow these steps:
+
+1. Clone the StabledGroundingSAM repository from GitHub:
 
 ```bash
-git clone https://github.com/IDEA-Research/GroundingDINO.git
+git clone https://github.com/Marco2929/StabledGroundingSAM.git
 ```
 
-Change the current directory to the StabledGroundingSAM folder.
+2. Change the current directory to the StabledGroundingSAM folder:
 
 ```bash
 cd StabledGroundingSAM/
 ```
 
-
-Clone the GroundingDINO repository from GitHub and follow the instructions there.
+3. Clone the GroundingDINO repository from GitHub and follow the instructions provided there:
 
 ```bash
 git clone https://github.com/IDEA-Research/GroundingDINO.git
 ```
 
-Download the weights of segment anything and groundingDINO (If not already done) and move them in the weights folder
+4. Download the weights for Segment Anything and GroundingDINO (if not already done) and move them to the "weights" folder:
 
 ```bash
 mkdir weights
@@ -54,36 +57,48 @@ wget -q https://github.com/IDEA-Research/GroundingDINO/releases/download/v0.1.0-
 wget -q https://dl.fbaipublicfiles.com/segment_anything/sam_vit_h_4b8939.pth
 ```
 
-Add a classes.txt file which contains the objects you want to label.
-Run program with providing the location of the classes.txt file, the initial image and how many pictures the model should generate.
+5. Create a "classes.txt" file that contains the objects you want to label.
+
+6. Run the program by providing the location of the "classes.txt" file, the initial image location, and the number of pictures you want the model to generate:
+
 ```bash
 python -m main <class.txt location> <initial image location> <number of pictures>
 ```
 
-## 🔧 Adjustables
+### 🔧 Adjustments
 
-There are many optional arguments which make it possible to adjust the output of the models.
-### Stable Diffusion:
-`--diffusion_prompt:` Provide different prompt to stable diffusion (by default classes.txt)
+StabledGroundingSAM provides several optional arguments that allow you to adjust the output of the models:
 
-See stable diffusion documentation
+#### Stable Diffusion:
 
-`--guidance_scale`
+- `--diffusion_prompt`: Provide a different prompt to stable diffusion (by default, uses the "classes.txt" file).
 
-`--strength`
+- `--guidance_scale`: Adjust the guidance scale.
 
-### Grounding-Dino:
+- `--strength`: Adjust the strength.
 
-See Grounding-Dino documentation
+Refer to the stable diffusion documentation for more information.
 
-`--box_threshold`
+#### Grounding-Dino:
 
-`--text_threshold`
-### Segment Anything (only available in the yolo dataset):
-Mask will not be used if it's over or under this percentage, useful to finetune segmentation.
+- `--box_threshold`: Adjust the box threshold for object detection in Grounding Dino.
 
-`--min_image_area_percentage`
+- `--text_threshold`: Adjust the text threshold for object detection in Grounding Dino.
 
-`--max_image_area_percentage`
+Refer to the Grounding Dino documentation for more information.
 
-`--approximation_percentage: `Changes the sharpness of mask.
+#### Segment Anything (only available in the YOLO dataset):
+
+- `--min_image_area_percentage`: Specify the minimum image area percentage for the segmentation mask.
+
+- `--max_image_area_percentage`: Specify the maximum image area percentage for the segmentation mask.
+
+- `--approximation_percentage`: Adjust the sharpness of the segmentation mask.
+
+These adjustable parameters allow you to fine-tune the output according to your requirements.
+
+Feel free to experiment with these parameters to achieve the desired results.
+
+## Conclusion
+
+StabledGroundingSAM is a powerful package that combines stable diffusion, Grounding Dino, and Segment Anything to generate new images with object segmentation. By following the installation steps and using the provided adjustable parameters, you can customize the output according to your needs. Have fun exploring the capabilities of StabledGroundingSAM and creating your own segmented image datasets!

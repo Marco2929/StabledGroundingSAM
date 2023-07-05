@@ -1,36 +1,47 @@
 import os
-from segment_anything import sam_model_registry, SamPredictor
 import torch
+from segment_anything import sam_model_registry, SamPredictor
 from GroundingDINO.groundingdino.util.inference import Model
 from diffusers import StableDiffusionImg2ImgPipeline
 
+# Check CUDA availability
+device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+print(f"You're currently using {device}")
 
-def init_models(HOME, device):
+
+def init_models(home):
+    """
+    Initializes the models for the application.
+
+    :param home: Path to the home directory
+    :type home: str
+
+    :return: Tuple containing the initialized models (pipe, grounding_dino_model, sam_predictor)
+    :rtype: Tuple[StableDiffusionImg2ImgPipeline, Model, SamPredictor]
+    """
+
     print("Initializing models..")
-    MODEL_TYPE = "vit_h"
+    model_type = "vit_h"
 
     # Initialize Stable Diffusion
-    model_id_or_path = "runwayml/stable-diffusion-v1-5"
-
-    pipe = StableDiffusionImg2ImgPipeline.from_pretrained(model_id_or_path, torch_dtype=torch.float16)
-
-    pipe = pipe.to(device)
+    stable_diffusion_model_id = "runwayml/stable-diffusion-v1-5"
+    stable_diffusion_pipe = StableDiffusionImg2ImgPipeline.from_pretrained(stable_diffusion_model_id, torch_dtype=torch.float16)
+    stable_diffusion_pipe = stable_diffusion_pipe.to(device)
 
     # Initialize Grounding DINO
-    GROUNDING_DINO_CONFIG_PATH = os.path.join(HOME, "GroundingDINO/groundingdino/config/GroundingDINO_SwinT_OGC.py")
-    print(GROUNDING_DINO_CONFIG_PATH, "; exist:", os.path.isfile(GROUNDING_DINO_CONFIG_PATH))
+    grounding_dino_config_path = os.path.join(home, "GroundingDINO/groundingdino/config/GroundingDINO_SwinT_OGC.py")
+    grounding_dino_checkpoint_path = os.path.join(home, "weights", "groundingdino_swint_ogc.pth")
 
-    GROUNDING_DINO_CHECKPOINT_PATH = os.path.join(HOME, "weights", "groundingdino_swint_ogc.pth")
-    print(GROUNDING_DINO_CHECKPOINT_PATH, "; exist:", os.path.isfile(GROUNDING_DINO_CHECKPOINT_PATH))
+    print(grounding_dino_config_path, "; exist:", os.path.isfile(grounding_dino_config_path))
+    print(grounding_dino_checkpoint_path, "; exist:", os.path.isfile(grounding_dino_checkpoint_path))
 
-    grounding_dino_model = Model(model_config_path=GROUNDING_DINO_CONFIG_PATH, model_checkpoint_path=GROUNDING_DINO_CHECKPOINT_PATH)
+    grounding_dino_model = Model(model_config_path=grounding_dino_config_path, model_checkpoint_path=grounding_dino_checkpoint_path)
 
     # Initialize SAM
-    CHECKPOINT_PATH = os.path.join(HOME, "weights", "sam_vit_h_4b8939.pth")
-    print(CHECKPOINT_PATH, "; exist:", os.path.isfile(CHECKPOINT_PATH))
+    sam_checkpoint_path = os.path.join(home, "weights", "sam_vit_h_4b8939.pth")
+    print(sam_checkpoint_path, "; exist:", os.path.isfile(sam_checkpoint_path))
 
-    sam = sam_model_registry[MODEL_TYPE](checkpoint=CHECKPOINT_PATH).to(device='cpu')
+    sam = sam_model_registry[model_type](checkpoint=sam_checkpoint_path).to(device='cpu')
     sam_predictor = SamPredictor(sam)
 
-
-    return pipe, grounding_dino_model, sam_predictor
+    return stable_diffusion_pipe, grounding_dino_model, sam_predictor

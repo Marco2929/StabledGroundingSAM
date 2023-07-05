@@ -7,7 +7,6 @@ from annotate import BoxAnnotator, MaskAnnotator
 from PIL import Image
 import argparse
 import os
-import torch
 import supervision as sv
 from helper import build_folder_structure, positive_float, get_class_names
 
@@ -20,29 +19,107 @@ def parse_args():
     parser.add_argument('number_of_pictures', type=int, help='how many pictures should be generated')
 
     parser.add_argument('-dp', '--diffusion_prompt', type=str, help='might be useful if generated image differs to classes')
-    parser.add_argument('-bt', '--box_threshold', type=float, default=0.35,
+    parser.add_argument('-bt', '--box_threshold', type=float,
                         help='Threshold for the bounding box detection (default: 0.5)')
-    parser.add_argument('-tt', '--text_threshold', type=float, default=0.25,
+    parser.add_argument('-tt', '--text_threshold', type=float,
                         help='Threshold for the text detection (default: 0.7)')
-    parser.add_argument('-s', '--strength', type=positive_float, default=0.75,
+    parser.add_argument('-s', '--strength', type=positive_float,
                         help='Strength of stable pipe')
-    parser.add_argument('-gs', '--guidance_scale', type=positive_float, default=7.5,
+    parser.add_argument('-gs', '--guidance_scale', type=positive_float,
                         help='Guidance scale of stable pipe')
-    parser.add_argument('-min', '--min_image_area_percentage', type=positive_float, default=0.002,
+    parser.add_argument('-min', '--min_image_area_percentage', type=positive_float,
                         help='Minimum area a mask should have in the dataset')
-    parser.add_argument('-max', '--max_image_area_percentage', type=positive_float, default=0.80,
+    parser.add_argument('-max', '--max_image_area_percentage', type=positive_float,
                         help='Maximum area a mask should have in the dataset')
-    parser.add_argument('-app', '--approximation_percentage', type=positive_float, default=0.75,
+    parser.add_argument('-app', '--approximation_percentage', type=positive_float,
                         help='How sharp the edges of the masks are the higher the sharper')
 
     args = parser.parse_args()
     return args
 
 
+def enhance_class_name(class_names: List[str]) -> List[str]:
+    """
+    Enhances the class names by adding a prefix and pluralizing them.
+
+    :param class_names: List of class names to be enhanced
+    :type class_names: List[str]
+    :return: List of enhanced class names
+    :rtype: List[str]
+    """
+
+    return [
+        f"all {class_name}s"
+        for class_name
+        in class_names
+    ]
+
+
+def segment(sam_predictor: SamPredictor, image: np.ndarray, xyxy: np.ndarray) -> np.ndarray:
+    """
+    Segments the specified image using the provided SamPredictor.
+
+    :param sam_predictor: Instance of SamPredictor used for segmentation
+    :type sam_predictor: SamPredictor
+    :param image: Input image as a NumPy array
+    :type image: np.ndarray
+    :param xyxy: Bounding box coordinates in the format [x1, y1, x2, y2]
+    :type xyxy: np.ndarray
+    :return: Segmented masks corresponding to the bounding boxes
+    :rtype: np.ndarray
+    """
+
+    sam_predictor.set_image(image)
+    result_masks = []
+    for box in xyxy:
+        masks, scores, logits = sam_predictor.predict(
+            box=box,
+            multimask_output=True
+        )
+        index = np.argmax(scores)
+        result_masks.append(masks[index])
+    return np.array(result_masks)
+
+
 class GenerateDataset:
-    def __init__(self, device, image_path, class_path, number_of_pictures, diffusion_prompt, box_threshold, text_threshold, strength,
-                 guidance_scale, min_image_area_percentage, max_image_area_percentage, approximation_percentage):
-        self.device = device
+    """
+    Initializes an instance of the GenerateDataset class with the provided arguments.
+
+    :param image_path: Path to the input image file
+    :type image_path: str
+    :param class_path: Path to the text file containing the objects that appear in the image
+    :type class_path: str
+    :param number_of_pictures: Number of pictures to be generated
+    :type number_of_pictures: int
+    :param diffusion_prompt: Optional prompt to use if the generated image differs from the expected classes
+    :type diffusion_prompt: str
+    :param box_threshold: Threshold for the bounding box detection (default: 0.35)
+    :type box_threshold: float
+    :param text_threshold: Threshold for the text detection (default: 0.25)
+    :type text_threshold: float
+    :param strength: Strength of stable pipe (default: 0.75)
+    :type strength: float
+    :param guidance_scale: Guidance scale of stable pipe (default: 7.5)
+    :type guidance_scale: float
+    :param min_image_area_percentage: Minimum area a mask should have in the dataset (default: 0.002)
+    :type min_image_area_percentage: float
+    :param max_image_area_percentage: Maximum area a mask should have in the dataset (default: 0.80)
+    :type max_image_area_percentage: float
+    :param approximation_percentage: How sharp the edges of the masks are; the higher the sharper (default: 0.75)
+    :type approximation_percentage: float
+    """
+    def __init__(self,
+                 image_path: str,
+                 class_path: str,
+                 number_of_pictures: int,
+                 diffusion_prompt: str,
+                 box_threshold: float = 0.35,
+                 text_threshold: float = 0.25,
+                 strength: float = 0.75,
+                 guidance_scale: float = 7.5,
+                 min_image_area_percentage: float = 0.002,
+                 max_image_area_percentage: float = 0.80,
+                 approximation_percentage: float = 0.75):
         self.image_path = image_path
         self.class_path = class_path
         self.number_of_pictures = number_of_pictures
@@ -55,31 +132,12 @@ class GenerateDataset:
         self.max_image_area_percentage = max_image_area_percentage
         self.approximation_percentage = approximation_percentage
 
-    def enhance_class_name(self, class_names: List[str]) -> List[str]:
-        return [
-            f"all {class_name}s"
-            for class_name
-            in class_names
-        ]
-
-    def segment(self, sam_predictor: SamPredictor, image: np.ndarray, xyxy: np.ndarray) -> np.ndarray:
-        sam_predictor.set_image(image)
-        result_masks = []
-        for box in xyxy:
-            masks, scores, logits = sam_predictor.predict(
-                box=box,
-                multimask_output=True
-            )
-            index = np.argmax(scores)
-            result_masks.append(masks[index])
-        return np.array(result_masks)
-
     def main(self):
         # get current path of program
         home = os.path.dirname(os.path.abspath(__file__))
 
         # load models
-        stable_pipe, grounding_dino_model, sam_predictor = init_models(home, device)
+        stable_pipe, grounding_dino_model, sam_predictor = init_models(home)
 
         # build folder structure
         build_folder_structure()
@@ -92,32 +150,40 @@ class GenerateDataset:
         if self.diffusion_prompt is None:
             self.diffusion_prompt = " ".join(CLASSES)  # Convert list of classes to a space-separated string
             self.diffusion_prompt = self.diffusion_prompt.replace(" ", ", ")  # Add commas between the class names
+
         print("Starting image generation and segmentation..")
+
+        images = {}
+        annotations = {}
+
+        images_extensions = ['jpg', 'jpeg', 'png']
+
         for i in range(self.number_of_pictures):
-            images = stable_pipe(prompt=self.diffusion_prompt, image=image, strength=self.strength,
+
+            stabled_image = stable_pipe(prompt=self.diffusion_prompt, image=image, strength=self.strength,
                                  guidance_scale=self.guidance_scale).images
 
             stabled_image_path = f"{home}/output/finished_dataset/images/generated_image_{i + 1}.png"
 
-            images[0].save(stabled_image_path)
+            stabled_image[0].save(stabled_image_path)
 
             # Load the generated image
             generated_image = cv2.imread(stabled_image_path)
 
-            # Detect objects in the generated image
             detections = grounding_dino_model.predict_with_classes(
-                image=generated_image,
-                classes=self.enhance_class_name(class_names=CLASSES),
+                image=image,
+                classes=enhance_class_name(class_names=CLASSES),
                 box_threshold=self.box_threshold,
                 text_threshold=self.text_threshold
             )
-
-            # Convert detections to masks
-            detections.mask = self.segment(
+            detections = detections[detections.class_id != None]
+            detections.mask = segment(
                 sam_predictor=sam_predictor,
-                image=cv2.cvtColor(generated_image, cv2.COLOR_BGR2RGB),
+                image=cv2.cvtColor(image, cv2.COLOR_BGR2RGB),
                 xyxy=detections.xyxy
             )
+            images[i + 1] = image
+            annotations[i + 1] = detections
 
             # Annotate image with detections
             box_annotator = BoxAnnotator()
@@ -131,35 +197,6 @@ class GenerateDataset:
 
             # Save the annotated image
             cv2.imwrite(f"{home}/output/segmented_pictures/generated_image_{i + 1}.png", annotated_image)
-
-        images_extensions = ['jpg', 'jpeg', 'png']
-
-        images = {}
-        annotations = {}
-
-        image_paths = sv.list_files_with_extensions(
-            directory=f"{home}/output/segmented_pictures",
-            extensions=images_extensions)
-        print("Save dataset as yolo..")
-        for image_path in image_paths:
-            image_name = image_path.name
-            image_path = str(image_path)
-            image = cv2.imread(image_path)
-
-            detections = grounding_dino_model.predict_with_classes(
-                image=image,
-                classes=self.enhance_class_name(class_names=CLASSES),
-                box_threshold=self.box_threshold,
-                text_threshold=self.text_threshold
-            )
-            detections = detections[detections.class_id != None]
-            detections.mask = self.segment(
-                sam_predictor=sam_predictor,
-                image=cv2.cvtColor(image, cv2.COLOR_BGR2RGB),
-                xyxy=detections.xyxy
-            )
-            images[image_name] = image
-            annotations[image_name] = detections
 
         sv.DetectionDataset(
             classes=CLASSES,
@@ -176,13 +213,8 @@ class GenerateDataset:
 if __name__ == '__main__':
     args = parse_args()
 
-    # Check Cuda Availability
-    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-    print(f"You're currently using {device}")
-
     # Create an instance of the GenerateDataset class with the specified arguments
     generate = GenerateDataset(
-                               device,
                                args.image_path,
                                args.class_path,
                                args.number_of_pictures,

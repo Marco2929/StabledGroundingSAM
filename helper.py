@@ -1,15 +1,32 @@
 import os
 import argparse
+from typing import List
 
 
-def positive_float(value):
+def positive_float(value: float) -> float:
+    """
+    Converts the input value to a positive float.
+
+    :param value: Input value to be converted
+    :type value: float
+
+    :return: Converted positive float value
+    :rtype: float
+
+    :raises argparse.ArgumentTypeError: If the input value is not a valid positive float
+    """
+
     fvalue = float(value)
     if fvalue <= 0:
         raise argparse.ArgumentTypeError("%s is an invalid positive float value" % value)
     return fvalue
 
 
-def build_folder_structure():
+def build_folder_structure() -> None:
+    """
+    Builds the folder structure for the output of the program.
+    """
+
     main_folder = "output"
     sub_folders = ["segmented_pictures", "finished_dataset"]
 
@@ -34,7 +51,17 @@ def build_folder_structure():
     if not os.path.exists(annotations_folder_path):
         os.makedirs(annotations_folder_path)
 
-def get_class_names(path):
+
+def get_class_names(path: str) -> List[str]:
+    """
+    Reads a file at the specified path and retrieves a list of class names.
+
+    :param path: Path to the file containing class names
+    :type path: str
+
+    :return: List of class names
+    :rtype: List[str]
+    """
     # Open the file
     with open(path, 'r') as file:
         # Read the contents
